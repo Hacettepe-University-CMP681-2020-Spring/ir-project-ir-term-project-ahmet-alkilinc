@@ -50,3 +50,35 @@ def to_word_sequence(s):
 
     for w in words:
         yield w
+
+
+
+d = "data/docs"
+clusters = [os.path.join(d, o) for o in os.listdir(d)
+                    if os.path.isdir(os.path.join(d,o))]
+
+vocab = dict()
+
+hyps = []
+references = []
+
+for c in clusters:
+    rows = []
+    cols = []
+    vals = []
+
+    sentences = []
+    for i, s in enumerate(sentences_of(lines_of(c))):
+        sentences.append(s)
+        for w in to_word_sequence(s):
+            if w not in vocab:
+                vocab[w] = len(vocab)
+            rows.append(i)
+            cols.append(vocab[w])
+            vals.append(1)
+
+
+    coocc_matrix = sp.coo_matrix((vals, (rows, cols)), shape=(i+1, len(vocab)))
+    coocc_matrix = coocc_matrix.tocsr()
+    coocc_matrix = normalize(coocc_matrix, axis=1, norm="l2", copy=False)
+
