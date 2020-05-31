@@ -11,6 +11,12 @@ class sentence(object):
     def getDocName(self):
         return self.docName
 
+    def getPreProWords(self):
+        return self.preproWords
+
+    def getOriginalWords(self):
+        return self.originalWords
+
     def getWordFreq(self):
         return self.wordFrequencies
 
