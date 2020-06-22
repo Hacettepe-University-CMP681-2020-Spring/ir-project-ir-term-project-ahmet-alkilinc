@@ -1,6 +1,7 @@
 import collections
 import math
 import re
+import string
 import sys
 
 import nltk
@@ -99,30 +100,44 @@ def split_into_sentences(text):
     text = re.sub("<TEXT>\n", "", text.group(0))
     text = re.sub("\n</TEXT>", "", text)
 
-    text = " " + text + "  "
-    text = text.replace("\n", " ")
-    text = re.sub(prefixes, "\\1<prd>", text)
-    text = re.sub(websites, "<prd>\\1", text)
-    if "Ph.D" in text: text = text.replace("Ph.D.", "Ph<prd>D<prd>")
-    text = re.sub("\s" + caps + "[.] ", " \\1<prd> ", text)
-    text = re.sub(acronyms + " " + starters, "\\1<stop> \\2", text)
-    text = re.sub(caps + "[.]" + caps + "[.]" + caps + "[.]", "\\1<prd>\\2<prd>\\3<prd>", text)
-    text = re.sub(caps + "[.]" + caps + "[.]", "\\1<prd>\\2<prd>", text)
-    text = re.sub(" " + suffixes + "[.] " + starters, " \\1<stop> \\2", text)
-    text = re.sub(" " + suffixes + "[.]", " \\1<prd>", text)
-    text = re.sub(" " + caps + "[.]", " \\1<prd>", text)
-    if "”" in text: text = text.replace(".”", "”.")
-    if "\"" in text: text = text.replace(".\"", "\".")
-    if "!" in text: text = text.replace("!\"", "\"!")
-    if "?" in text: text = text.replace("?\"", "\"?")
+    # text = " " + text + "  "
+    # text = text.replace("\n", " ")
+    # text = re.sub(prefixes, "\\1<prd>", text)
+    # text = re.sub(websites, "<prd>\\1", text)
+    # if "Ph.D" in text: text = text.replace("Ph.D.", "Ph<prd>D<prd>")
+    # text = re.sub("\s" + caps + "[.] ", " \\1<prd> ", text)
+    # text = re.sub(acronyms + " " + starters, "\\1<stop> \\2", text)
+    # text = re.sub(caps + "[.]" + caps + "[.]" + caps + "[.]", "\\1<prd>\\2<prd>\\3<prd>", text)
+    # text = re.sub(caps + "[.]" + caps + "[.]", "\\1<prd>\\2<prd>", text)
+    # text = re.sub(" " + suffixes + "[.] " + starters, " \\1<stop> \\2", text)
+    # text = re.sub(" " + suffixes + "[.]", " \\1<prd>", text)
+    # text = re.sub(" " + caps + "[.]", " \\1<prd>", text)
+    # if "”" in text: text = text.replace(".”", "”.")
+    # if "\"" in text: text = text.replace(".\"", "\".")
+    # if "!" in text: text = text.replace("!\"", "\"!")
+    # if "?" in text: text = text.replace("?\"", "\"?")
+    #
+    # text = text.replace(".", ".<stop>")
+    # text = text.replace("?", "?<stop>")
+    # text = text.replace("!", "!<stop>")
 
-    text = text.replace(".", ".<stop>")
-    text = text.replace("?", "?<stop>")
-    text = text.replace("!", "!<stop>")
+    # replace all types of quotations by normal quotes
+    text = re.sub("\n", " ", text)
 
-    text = text.replace("<prd>", ".")
-    sentences = text.split("<stop>")
-    sentences = sentences[:-1]
+    text = re.sub("\"", " ", text)
+    text = re.sub("\'", " ", text)
+    text = re.sub("''", " ", text)
+    text = re.sub("``", " ", text)
+
+    text = re.sub(" +", " ", text)
+
+    text = text.translate(string.punctuation)
+
+    # text = text.replace("<prd>", ".")
+    # sentences = text.split("<stop>")
+    # segment data into a list of sentences
+    sentences = nltk.sent_tokenize(text)
+    # sentences = sentences[:-1]
     sentences = [s.strip() for s in sentences]
     return sentences
 
@@ -203,15 +218,18 @@ def tfIsf(tokenized_sentences):
                     if word == w:
                         count_word += 1
             score = score + counts[word] * math.log(count_word - 1)
-        scores.append(score / len(sentence))
+        if len(sentence) != 0:
+            scores.append(score / len(sentence))
+        else:
+            scores.append(0.0)
     return scores
 
 
 class Features(object):
 
-    def __init__(self, text, sentences_object, paragraphs):
+    def __init__(self, sentences, sentences_object, paragraphs):
         self.paragraphs = paragraphs
-        self.sentences = split_into_sentences(text)
+        self.sentences = sentences
         self.sentencesObject = sentences_object
         self.tokenized_sentences = remove_stop_words(self.sentences)
         self.tagged = posTagger(self.tokenized_sentences)
@@ -446,7 +464,10 @@ class Features(object):
             for j in range(len(self.tagged[i])):
                 if self.tagged[i][j][1] == 'NNP' or self.tagged[i][j][1] == 'NNPS':
                     score += 1
-            scores.append(score / float(len(self.tagged[i])))
+            if len(self.tagged[i]) != 0:
+                scores.append(score / float(len(self.tagged[i])))
+            else:
+                scores.append(0.0)
         return scores
 
     def centroidSimilarity(self):
@@ -467,7 +488,12 @@ class Features(object):
             for word in sentence:
                 if is_number(word):
                     score += 1
-            scores.append(score / float(len(sentence)))
+
+            if len(sentence) != 0:
+                scores.append(score / float(len(sentence)))
+            else:
+                scores.append(0.0)
+
         return scores
 
     def namedEntityRecog(self):
@@ -522,7 +548,7 @@ class Features(object):
         thematic_words = []
         for data in most_common:
             thematic_words.append(data[0])
-        print(thematic_words)
+        # print(thematic_words)
         scores = []
         for sentence in self.tokenized_sentences:
             score = 0
@@ -548,14 +574,19 @@ class Features(object):
             for word in sentence:
                 if word[0] in upper_case:
                     score = score + 1
-            scores.append(1.0 * score / len(sentence))
+
+            if len(sentence) != 0:
+                scores.append(1.0 * score / len(sentence))
+            else:
+                scores.append(0.0)
+
         return scores
 
     def sentencePosition(self):
         scores = []
         for para in self.paragraphs:
             sentences = split_into_sentences(para)
-            print(len(sentences))
+            # print(len(sentences))
             if len(sentences) == 1:
                 scores.append(1.0)
             elif len(sentences) == 2:
