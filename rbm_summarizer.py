@@ -1,16 +1,15 @@
 import nltk
 import os
-import math
+
 import string
 import re
 import numpy as np
+from sklearn import preprocessing
 
-import dbn
 import rbm
 
 import para_reader
-import sentence
-from nltk.corpus import stopwords
+
 
 from features import Features
 from mmr_summarizer import processFile
@@ -20,27 +19,6 @@ def split_into_sentences(text):
     text = re.search(r"<TEXT>.*</TEXT>", text, re.DOTALL)
     text = re.sub("<TEXT>\n", "", text.group(0))
     text = re.sub("\n</TEXT>", "", text)
-
-    # text = " " + text + "  "
-    # text = text.replace("\n", " ")
-    # text = re.sub(prefixes, "\\1<prd>", text)
-    # text = re.sub(websites, "<prd>\\1", text)
-    # if "Ph.D" in text: text = text.replace("Ph.D.", "Ph<prd>D<prd>")
-    # text = re.sub("\s" + caps + "[.] ", " \\1<prd> ", text)
-    # text = re.sub(acronyms + " " + starters, "\\1<stop> \\2", text)
-    # text = re.sub(caps + "[.]" + caps + "[.]" + caps + "[.]", "\\1<prd>\\2<prd>\\3<prd>", text)
-    # text = re.sub(caps + "[.]" + caps + "[.]", "\\1<prd>\\2<prd>", text)
-    # text = re.sub(" " + suffixes + "[.] " + starters, " \\1<stop> \\2", text)
-    # text = re.sub(" " + suffixes + "[.]", " \\1<prd>", text)
-    # text = re.sub(" " + caps + "[.]", " \\1<prd>", text)
-    # if "”" in text: text = text.replace(".”", "”.")
-    # if "\"" in text: text = text.replace(".\"", "\".")
-    # if "!" in text: text = text.replace("!\"", "\"!")
-    # if "?" in text: text = text.replace("?\"", "\"?")
-    #
-    # text = text.replace(".", ".<stop>")
-    # text = text.replace("?", "?<stop>")
-    # text = text.replace("!", "!<stop>")
 
     # replace all types of quotations by normal quotes
     text = re.sub("\n", " ", text)
@@ -52,8 +30,7 @@ def split_into_sentences(text):
 
     text = text.translate(string.punctuation)
 
-    # text = text.replace("<prd>", ".")
-    # sentences = text.split("<stop>")
+
     # segment data into a list of sentences
     sentences = nltk.sent_tokenize(text)
     # sentences = sentences[:-1]
@@ -87,6 +64,8 @@ if __name__ == '__main__':
             text = file.read()
             sentences = sentences + split_into_sentences(text)
 
+
+
         features = Features(sentences, sentencesObject, paragraphs)
         # sentences = sentence+features.getSentences()
         tokenized_sentences = features.getTokenizedSentences()
@@ -111,13 +90,14 @@ if __name__ == '__main__':
         numCharacterLen = features.getNumCharacterLen()
 
         featureMatrix = [thematicFeatureScore, sentencePosScore, sentenceLengthScore, properNounScore,
-                         numericTokenScore, namedEntityRecogScore, tfIsfScore, centroidSimilarityScore, numWords,
-                         numUniqWords, numChars, numWordsUpper, numWordsTitle, meanWordLen, numCharacterLen]
+                         numericTokenScore, namedEntityRecogScore, tfIsfScore, centroidSimilarityScore]
+
+
 
         # featureMatrix.append(sentenceParaScore)
 
-        featureMat = np.zeros((len(features.getSentences()), 15))
-        for i in range(15):
+        featureMat = np.zeros((len(features.getSentences()), 8))
+        for i in range(8):
             for j in range(len(features.getSentences())):
                 featureMat[j][i] = featureMatrix[i][j]
 
@@ -125,7 +105,7 @@ if __name__ == '__main__':
         # print(featureMat)
         # print("\n\n\nPrinting Feature Matrix Normed : ")
         # featureMat_normed = featureMat / featureMat.max(axis=0)
-        featureMat_normed = featureMat
+        featureMat_normed = preprocessing.normalize(featureMat)
 
         feature_sum = []
 
@@ -137,7 +117,7 @@ if __name__ == '__main__':
         #     print(featureMat_normed[i])
 
         temp = rbm.test_rbm(dataset=featureMat_normed, learning_rate=0.1, training_epochs=14, batch_size=5, n_chains=5,
-                            n_hidden=15)
+                            n_hidden=8)
 
         # temp = dbn.test_DBN(dataset=featureMat, finetune_lr=0.1, pretraining_epochs=100,
         #              pretrain_lr=0.01, k=1, training_epochs=1000,
@@ -190,6 +170,8 @@ if __name__ == '__main__':
                 break
 
         results_folder = "Results/RBM_results"
+        if not os.path.exists(results_folder):
+            os.makedirs(results_folder)
         filename = os.path.join(results_folder, (str(folder) + ".RBM"))
         with open(os.path.join(results_folder, (str(folder) + ".RBM")), "w") as fileOut:
             fileOut.write(final_summary)
