@@ -110,8 +110,7 @@ if __name__ == '__main__':
         numCharacterLen = features.getNumCharacterLen()
 
         featureMatrix = [thematicFeatureScore, sentencePosScore, sentenceLengthScore, properNounScore,
-                         numericTokenScore, namedEntityRecogScore, tfIsfScore, centroidSimilarityScore, numWords,
-                         numUniqWords, numChars, numWordsUpper, numWordsTitle, meanWordLen, numCharacterLen]
+                         numericTokenScore, namedEntityRecogScore, tfIsfScore, centroidSimilarityScore]
 
         # featureMatrix.append(sentenceParaScore)
 
